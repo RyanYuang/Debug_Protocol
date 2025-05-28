@@ -8,8 +8,8 @@
   - 命令格式：`@ 0x01 0x20 [Content] \r\n` 📡
   - 变量格式：`@ 0x02 0x20 [VAR_Name]:[Data]\r\n` 📊
 - **两种处理模式**：
-  - **慢速模式**：适用于命令和变量的详细解析和处理。🐢
-  - **快速模式**：优化了高速度数据传输，减少开销。⚡
+  - **慢速模式**：适用于命令和变量的详细解析和处理,适用于与上位机进行通信的调试。🐢
+  - **快速模式**：优化了高速度数据传输，减少开销，适用于与其他设备的快速串口通信如Openmv。⚡
 - **变量和命令管理**：
   - 使用 `Val_Create` 创建和管理变量。📋
   - 使用 `CMD_Create` 注册带有回调函数的自定义命令。🔧
@@ -115,4 +115,5 @@ CMD_Create("Reply", &reply_function); // 🔗 链接命令
 请参阅 [LICENSE](LICENSE) 文件了解完整详情。
 
 ## 联系 📧
-如有问题或建议，请在 [GitHub 仓库](https://github.com/RyanYuang/Debug-Protocol) 上提出问题，或联系作者 Ryan Yuang。
+如有问题或建议，请在 [GitHub 仓库](https://github.com/RyanYuang/Debug-Protocol) 上提出问题，或联系作者 Ryan Yuang
+Email: RyanYuang@outlook.com
