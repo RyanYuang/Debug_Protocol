@@ -2,7 +2,12 @@
 #define _COMMON_COMMUNICATION_PROTOCOL_H__
 #include "HeadFiles.h"
 
+/* 必要的头文件 */
+#include "string.h"
+#include "stdio.h"
+#include "stdlib.h"
 /*
+ *
 命令格式：@ 0x01 0x20 [Content] \r\n
 变量格式：@ 0x02 0x20 [VAR_Name]:[Data]\r\n
 */
@@ -18,6 +23,14 @@
 #define SLOW_TYPE 0x02
 #define BUFFER_END_SIGN 0x0D
 #define VAR_CREATE(Name,x) Val_Create(Name,&x)
+
+//变量联合体
+typedef union
+{
+		void *Data_Addr;
+    float* f_Data;
+    int* I_Data;
+}Data_union;
 
 //变量结构体
 typedef struct Val
