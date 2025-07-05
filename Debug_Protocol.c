@@ -16,7 +16,7 @@
 * 日期              作者                备注
 * 2025-4-26       Ryan Yuang            first version
 ********************************************************************************************************************/
-#include "Common_Communicate_Protocol.h"
+#include "Debug_Protocol.h"
 
 /* 全局变量 */
 
@@ -25,7 +25,6 @@ Val_t Val[50];
 
 /* 已创建的可变变量的总数 */
 int Val_Num;
-
 
 /* 指令数组 */
 CMD_t CMD_Arry[50];
@@ -41,7 +40,7 @@ uint8_t Data_Arry[50][10],
 /* 数据下标 */
 uint8_t Data_Arry_Index,Data_Index;
 
-/* 浮点数*/
+/* 浮点数临时存储数组 */
 float fData_Arry[10];
 
 /* 协议结构体定义 */
@@ -86,9 +85,6 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 	switch (Mode)
 	{
 		case SLOW_TYPE:
-
-			
-			
 			if(*x->Buffer.Main_Ptr == '@' && x->Status == 0)
 			{
 				x->Status = 1;
@@ -104,7 +100,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 				/*printf("Get Head\r\n");*/
 				return;
 			}
-			if(*x->Buffer.Main_Ptr == CMD_TYPE && x->Status == 1)//确认是一个指令==暂时没有任何作用==
+			if(*x->Buffer.Main_Ptr == CMD_TYPE && x->Status == 1)//确认是一个指令
 			{
 				x->Status = 2;
 				x->Data_Type = *x->Buffer.Main_Ptr;
@@ -115,7 +111,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 				//printf("IS CMD\r\n");
 				return;
 			}
-			if(*x->Buffer.Main_Ptr == VAR_TYPE && x->Status == 1)//确认是一个变量==暂时没有任何作用==
+			if(*x->Buffer.Main_Ptr == VAR_TYPE && x->Status == 1)//确认是一个变量
 			{
 					x->Status = 2;
 					x->Data_Type = *x->Buffer.Main_Ptr;
@@ -178,7 +174,11 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 							{
 							
 									*Val[i].Data.f_Data = strtof((char*)x->Val_Data,NULL);
-
+									/* For Debug */
+									/*
+									printf("%s\r\""n",x->Val_Data);
+									printf("%f\r\n",*Val[i].Data.f_Data);
+									*/
 
 							 }
 					}
