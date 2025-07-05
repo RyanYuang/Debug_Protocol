@@ -1,0 +1,3 @@
+../Code/User/User_Code.c:14:1:__io_putchar	24	static
+../Code/User/User_Code.c:25:6:HAL_UART_RxCpltCallback	16	static
+../Code/User/User_Code.c:37:6:User_Main	8	static
