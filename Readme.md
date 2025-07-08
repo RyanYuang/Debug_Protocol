@@ -24,7 +24,7 @@
    ```
 
 2. **加入项目**：
-   - 将 `Common_Communicate_Protocol.c` 和 `Common_Communicate_Protocol.h` 复制到您的项目目录中。📂
+   - 将 `Debug_Protocol.c` 和 `Debug_Protocol.h` 复制到您的项目目录中。📂
    - 确保您的开发环境中包含 `HeadFiles.h`（或任何其他必需的依赖项）。
 
 3. **使用工具链构建**：
