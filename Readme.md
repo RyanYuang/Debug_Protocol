@@ -5,11 +5,11 @@
 ## 功能 ✨
 
 - **灵活的协议结构**：支持命令和变量格式，实现多样化的通信。
-  - 命令格式：`@ 0x01 0x20 [Content] \r\n` 📡
-  - 变量格式：`@ 0x02 0x20 [VAR_Name]:[Data]\r\n` 📊
+  - 命令格式：`@ 0x01 [MACHINE CODE] [Content] \r\n` 📡
+  - 变量格式：`@ 0x02 [MACHINE CODE] [VAR_Name]:[Data]\r\n` 📊
 - **两种处理模式**：
   - **慢速模式**：适用于命令和变量的详细解析和处理,适用于与上位机进行通信的调试。🐢
-  - **快速模式**：优化了高速度数据传输，减少开销，适用于与其他设备的快速串口通信如Openmv。⚡
+  - **快速模式**：优化了高速度数据传输，减少开销，适用于与其他设备的快速串口通信如Openmv。⚡（暂时还需要验证优化）
 - **变量和命令管理**：
   - 使用 `Val_Create` 创建和管理变量。📋
   - 使用 `CMD_Create` 注册带有回调函数的自定义命令。🔧
@@ -20,7 +20,7 @@
 
 1. **克隆仓库**：
    ```bash
-   git clone https://github.com/RyanYuang/Debug-Protocol.git
+   git clone https://github.com/RyanYuang/Debug_Protocol.git
    ```
 
 2. **加入项目**：
@@ -37,7 +37,8 @@
 创建一个 `Protocol_t` 对象，并使用您所需的模式（`SLOW_TYPE` 或 `FAST_TYPE`）进行初始化。
 
 ```c
-#include "Common_Communicate_Protocol.h"
+#include "Debug_Protocol.h"
+#include "PerformanceTest.h"
 
 Protocol_t USART1_Protocol;
 
@@ -51,7 +52,8 @@ void main() {
 
 ```c
 void USART1_IRQHandler(void) {
-    uint8_t received_data = /* 您的串口接收函数 */;
+    uint8_t received_data[1];
+    uint8_t received_data[0] = /* 您的串口接收函数 */;
     Rec_Proc(&USART1_Protocol, received_data); // 📥 接收数据
 }
 ```
@@ -72,8 +74,10 @@ void main() {
 注册由协议管理的变量。
 
 ```c
-float speed = 0.0;
-Val_Create("Speed", &speed); // 📝 注册变量
+float speed_f = 0.0;
+int   speed_i = 0;
+Val_Create("speed_f", &speed_f); // 📝 注册变量
+Val_Create("speed_i", &speed_i); // 📝 注册变量
 ```
 
 ### 5. 创建命令
@@ -87,8 +91,13 @@ void reply_function() {
 
 CMD_Create("Reply", &reply_function); // 🔗 链接命令
 ```
-
+### 6.修改Machine Code
+```
+<Debug_Protocol.h>
+#define MACHINE_ADDR 0x20 (可以改为你需要的机器码，但是不要与宏定义中的数值相同即可)
+```
 ### 示例数据格式
+MACHINE CODE为 0x20
 - **命令**：发送 `@ 0x01 0x20 Reply \r\n` 以触发 `reply_function`。🎯
 - **变量**：发送 `@ 0x02 0x20 Speed:123.45 \r\n` 以将 `speed` 变量设置为 `123.45`。📈
 
@@ -106,6 +115,8 @@ CMD_Create("Reply", &reply_function); // 🔗 链接命令
 5. 发起拉取请求。📬
 
 修改代码时，请按照 MIT 许可证条款保留原始版权声明。
+
+
 
 ## 许可证 📜
 本项目采用 MIT 许可证授权。您可以自由使用、复制、修改、合并、发布、分发、授权和/或销售软件副本，但需遵守以下条件：
