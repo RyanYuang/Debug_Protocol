@@ -1,6 +1,6 @@
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:76:6:Rec_Proc	4
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:103:6:Protocol_Reset	1
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:123:6:Protocol	44
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:378:6:Protocol_Init	1
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:393:6:Val_Create	1
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:409:6:CMD_Create	1
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:79:6:Rec_Proc	4
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:107:6:Protocol_Reset	1
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:127:6:Protocol	45
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:449:6:Protocol_Init	1
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:464:6:Val_Create	1
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:480:6:CMD_Create	1

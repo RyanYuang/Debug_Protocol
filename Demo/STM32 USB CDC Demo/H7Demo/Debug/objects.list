@@ -1,4 +1,5 @@
 "./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.o"
+"./Code/Third-Party_lib/Debug_Protocol/PerformanceTest.o"
 "./Code/User/User_Code.o"
 "./Core/Src/main.o"
 "./Core/Src/stm32h7xx_hal_msp.o"

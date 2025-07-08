@@ -36,6 +36,7 @@ USB_DEVICE/Target/usbd_conf.o: ../USB_DEVICE/Target/usbd_conf.c \
  ../USB_DEVICE/Target/usbd_conf.h ../Core/Inc/main.h \
  C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/User/HeadFiles.h \
  C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.h \
+ C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/PerformanceTest.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h \
@@ -81,6 +82,7 @@ USB_DEVICE/Target/usbd_conf.o: ../USB_DEVICE/Target/usbd_conf.c \
 ../Core/Inc/main.h:
 C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/User/HeadFiles.h:
 C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.h:
+C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/PerformanceTest.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h:

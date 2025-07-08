@@ -36,7 +36,8 @@ Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.o: \
  ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usb.h \
  ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pcd_ex.h \
  ../Core/Inc/main.h \
- C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.h
+ C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.h \
+ C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/PerformanceTest.h
 ../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.h:
 C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/User/HeadFiles.h:
 ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h:
@@ -74,3 +75,4 @@ C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/User/HeadFiles.h:
 ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pcd_ex.h:
 ../Core/Inc/main.h:
 C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.h:
+C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/PerformanceTest.h:

@@ -8,5 +8,5 @@
 
 /* Third Party Libraries */
 #include "Debug_Protocol.h"
-
+#include "PerformanceTest.h"
 #endif

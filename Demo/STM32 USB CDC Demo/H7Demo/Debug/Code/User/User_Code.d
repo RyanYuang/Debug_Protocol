@@ -36,6 +36,7 @@ Code/User/User_Code.o: ../Code/User/User_Code.c ../Code/User/User_Code.h \
  ../Core/Inc/main.h \
  C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/User/HeadFiles.h \
  C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.h \
+ C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/PerformanceTest.h \
  ../USB_DEVICE/App/usb_device.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h \
  ../USB_DEVICE/Target/usbd_conf.h ../USB_DEVICE/App/usbd_cdc_if.h \
@@ -83,6 +84,7 @@ Code/User/User_Code.o: ../Code/User/User_Code.c ../Code/User/User_Code.h \
 ../Core/Inc/main.h:
 C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/User/HeadFiles.h:
 C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.h:
+C:/Users/RyanY/STM32CubeIDE/workspace_1.18.0/H7Demo/Code/Third-Party_lib/Debug_Protocol/PerformanceTest.h:
 ../USB_DEVICE/App/usb_device.h:
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h:
 ../USB_DEVICE/Target/usbd_conf.h:

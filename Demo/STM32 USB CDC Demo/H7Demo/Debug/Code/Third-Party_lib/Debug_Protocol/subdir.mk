@@ -5,13 +5,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c 
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c \
+../Code/Third-Party_lib/Debug_Protocol/PerformanceTest.c 
 
 OBJS += \
-./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.o 
+./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.o \
+./Code/Third-Party_lib/Debug_Protocol/PerformanceTest.o 
 
 C_DEPS += \
-./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.d 
+./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.d \
+./Code/Third-Party_lib/Debug_Protocol/PerformanceTest.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -21,7 +24,7 @@ Code/Third-Party_lib/Debug_Protocol/%.o Code/Third-Party_lib/Debug_Protocol/%.su
 clean: clean-Code-2f-Third-2d-Party_lib-2f-Debug_Protocol
 
 clean-Code-2f-Third-2d-Party_lib-2f-Debug_Protocol:
-	-$(RM) ./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.cyclo ./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.d ./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.o ./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.su
+	-$(RM) ./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.cyclo ./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.d ./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.o ./Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.su ./Code/Third-Party_lib/Debug_Protocol/PerformanceTest.cyclo ./Code/Third-Party_lib/Debug_Protocol/PerformanceTest.d ./Code/Third-Party_lib/Debug_Protocol/PerformanceTest.o ./Code/Third-Party_lib/Debug_Protocol/PerformanceTest.su
 
 .PHONY: clean-Code-2f-Third-2d-Party_lib-2f-Debug_Protocol
 
