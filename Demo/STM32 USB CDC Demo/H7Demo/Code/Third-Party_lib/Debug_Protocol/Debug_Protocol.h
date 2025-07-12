@@ -11,7 +11,7 @@
 命令格式：@ 0x01 0x20 [Content] \r\n
 变量格式：@ 0x02 0x20 [VAR_Name]:[Data]\r\n
 */
-#define DEBUG_MODE 0
+#define DEBUG_MODE 1
 
 /* -------------------------------------------------------------------------- */
 /*                                    Marco                                   */
@@ -23,6 +23,8 @@
 #define SLOW_TYPE 0x02
 #define BUFFER_END_SIGN 0x0D
 #define VAR_CREATE(Name,x) Val_Create(Name,&x)
+
+#define BufferSize 100
 
 //变量联合体
 typedef union
@@ -42,7 +44,7 @@ typedef struct Val
 //协议缓冲区
 typedef struct Protocol_Buffer
 {
-    uint8_t Protocol_Buffer[100];
+    uint8_t Protocol_Buffer[BufferSize];
     uint8_t *Main_Ptr;
     uint8_t *Stroage_Ptr;
 
@@ -54,6 +56,14 @@ typedef enum
 	INT = 0,
 	FLOAT
 }Data_Type;
+
+typedef struct
+{
+    uint8_t Data_Arry_Index;
+    uint8_t Data_Index;
+    uint8_t Data_Arry[50][10];
+}DataBuffer;
+
 //协议结构体
 typedef struct Protocol
 {
@@ -68,6 +78,8 @@ typedef struct Protocol
     uint8_t *Val_Data_Ptr;		/*数据变量指针 */
     uint8_t Block;				/* 协议处理方式选择 BLOCK/UNBLOCK*/
     uint8_t Data_Type;			/* 接收到的数据类型 */
+    DataBuffer Data_Buffer;		/* 快速模式下的数据缓冲区 */
+
 }Protocol_t;
 
 typedef struct 
@@ -128,6 +140,7 @@ void Rec_Proc(Protocol_t* x, uint8_t* Data);
 void CMD_Create(char *Name,void (*CallBack_Function)());
 void Fast_Type_Proc(Protocol_t* x,uint8_t DR);
 float Fast_Type_Data_Converse(Protocol_t* x,uint8_t Index);
-
-
+uint32_t Get_Write_Ptr(Protocol_t *x);
+uint32_t Get_Read_Ptr(Protocol_t *x);
+uint32_t Get_Read_Remain(Protocol_t *x);
 #endif

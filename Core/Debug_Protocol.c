@@ -32,14 +32,6 @@ CMD_t CMD_Arry[50];
 /* 已创建的指令数量  */
 int CMD_Num;
 
-/* 数据临时存放数组 */
-uint8_t Data_Arry[50][10],
-				(*Data_Main_Ptr)[10],
-				*Data_Ptr;
-
-/* 数据下标 */
-uint8_t Data_Arry_Index,Data_Index;
-
 /* 浮点数临时存储数组 */
 float fData_Arry[10];
 
@@ -86,8 +78,12 @@ void Rec_Proc(Protocol_t* x, uint8_t* Data)
     size_t buffer_size = sizeof(x->Buffer.Protocol_Buffer);
     size_t available_space = buffer_size - (x->Buffer.Stroage_Ptr - x->Buffer.Protocol_Buffer);
 
+    size_t Cut_size = 0;
+
     // 确保不会溢出缓冲区
-    if (data_len > available_space) {
+    if (data_len > available_space)
+    {
+        Cut_size = data_len - available_space;
         data_len = available_space; // 截断到可用空间大小
     }
 
@@ -99,8 +95,17 @@ void Rec_Proc(Protocol_t* x, uint8_t* Data)
 
     // 边界检查，防止指针越界
     if (x->Buffer.Stroage_Ptr > x->Buffer.Protocol_Buffer + buffer_size - 1 ||
-        x->Buffer.Stroage_Ptr < x->Buffer.Protocol_Buffer) {
+        x->Buffer.Stroage_Ptr < x->Buffer.Protocol_Buffer)
+    {
         x->Buffer.Stroage_Ptr = x->Buffer.Protocol_Buffer; // 重置指针
+    }
+
+    /* 被剪切的尾部还需要放入缓冲区中 */
+    Data+=data_len;
+    if(Cut_size)
+    {
+    	memcpy(x->Buffer.Stroage_Ptr, Data, Cut_size);
+    	x->Buffer.Stroage_Ptr += Cut_size;
     }
 }
 
@@ -111,9 +116,20 @@ void Protocol_Reset(Protocol_t* x)
 	x->Val_Data_Ptr = x->Val_Data;						/* 重置变量获取指针 */
 	x->Command_Type = 0;									/* 重置数据类型参数 */
 	x->Machine_Addr = 0;								/* 重置机器地址参数 */
-	*x->Buffer.Main_Ptr = 0;							/* 接收的内容设置为空 */
-	x->Buffer.Main_Ptr = x->Buffer.Protocol_Buffer;
-	x->Buffer.Stroage_Ptr = x->Buffer.Protocol_Buffer;
+	//*x->Buffer.Main_Ptr = 0;							/* 接收的内容设置为空 */
+	//x->Buffer.Main_Ptr++;
+}
+
+void Ptr_Dect(Protocol_t* x)
+{
+	/* 检测当前指针位置是否异常 */
+	if(
+			x->Buffer.Main_Ptr > (x->Buffer.Protocol_Buffer + BufferSize - 1)  	/* 检测越界 */
+			|| x->Buffer.Main_Ptr < x->Buffer.Protocol_Buffer)										/* 检测错误地址 */
+	{
+		x->Buffer.Main_Ptr = x->Buffer.Protocol_Buffer;												/* 重置指针位置为协议缓冲区的头部 */
+		printf("\n=========== Over Range Reset ==========\n");
+	}
 }
 
 //-------------------------------------------------------------------------------------------------------------------
@@ -126,14 +142,8 @@ void Protocol_Reset(Protocol_t* x)
 //-------------------------------------------------------------------------------------------------------------------
 void Protocol(Protocol_t* x,uint8_t Mode)
 {
-	/* 检测当前指针位置是否异常 */
-	if(
-			x->Buffer.Main_Ptr > x->Buffer.Protocol_Buffer + sizeof(x->Buffer.Protocol_Buffer)-1  	/* 检测越界 */
-			|| x->Buffer.Main_Ptr < x->Buffer.Protocol_Buffer)										/* 检测错误地址 */
-	{
-		x->Buffer.Main_Ptr = x->Buffer.Protocol_Buffer;												/* 重置指针位置为协议缓冲区的头部 */
-	}
-	if(*x->Buffer.Main_Ptr == 0)return;																/* 遇到0x00直接退出，防止损耗CPU性能 */
+	Ptr_Dect(x);
+	//if(*x->Buffer.Main_Ptr == 0)return;																/* 遇到0x00直接退出，防止损耗CPU性能 */
 	switch (Mode)
 	{
 		/* 慢模式的参数调节 */
@@ -154,6 +164,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 					x->Machine_Addr = 0;			/* 重置机器地址参数 */
 					*x->Buffer.Main_Ptr = 0;		/* 接收的内容设置为空 */
 					x->Buffer.Main_Ptr++;			/* 推进接收缓冲区 */
+					Ptr_Dect(x);
 					x->Data_Type = INT;
 
 #if DEBUG_MODE == 1
@@ -164,6 +175,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 					x->Command_Type = *x->Buffer.Main_Ptr;			/* 存储数据类型 */
 					*x->Buffer.Main_Ptr = 0;					/* 清空当前数据 */
 					x->Buffer.Main_Ptr++;						/* 推进数据指针 */
+					Ptr_Dect(x);
 					x->Status = STATE_MACHINE;					/* 更新标志位  */
 
 #if DEBUG_MODE == 1
@@ -188,6 +200,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 					x->Machine_Addr = *x->Buffer.Main_Ptr;	/* 存储机器地址 */
 					*x->Buffer.Main_Ptr = 0;				/* 清空当前数据 */
 					x->Buffer.Main_Ptr++;					/* 推进数据指针 */
+					Ptr_Dect(x);
 					x->Status = STATE_NAME;					/* 更新标志位  */
 #if PERFORMACE == 1
 					Head_Tick = DWT_GetMicrosecond();				/* 记录完成获取头部的时候的SysTick */
@@ -204,16 +217,19 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 					{
 #if DEBUG_MODE == 1
 						/* 重置整个协议 */
-						printf("NO ACK\r\n");
+						printf("NO ACK For %d\r\n",x->Machine_Addr);
 #endif
+						/* 非控制当前设备 */
 						Protocol_Reset(x);
 					}
 				}
 			break;
 			case STATE_NAME:
-				/* 接收变量名/指令名	*/
+				/*  接收变量名/指令名	*/
+				/********** 阻塞模式 接收名称 **********/
 				if(x->Block == BLOCK)
 				{
+
 					/* 阻塞处理变量名 */
 					while(*x->Buffer.Main_Ptr != ':')
 					{
@@ -221,7 +237,8 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 						x->Val_Name_Ptr++;
 						/* 推进指针 */
 						*x->Buffer.Main_Ptr = 0;
-						*x->Buffer.Main_Ptr++;
+						x->Buffer.Main_Ptr++;
+						Ptr_Dect(x);
 						/* 检测到冒号直接退出该模式 */
 						if(*x->Buffer.Main_Ptr == ':')
 						{
@@ -230,6 +247,9 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 						}
 					}
 				}
+				/********** 阻塞模式 接收名称 **********/
+
+				/********** 非阻塞模式 接收名称 **********/
 				else
 				{
 					/* 非阻塞处理变量名 */
@@ -239,20 +259,20 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 						x->Val_Name_Ptr++;
 						/* 推进指针 */
 						*x->Buffer.Main_Ptr = 0;
-						*x->Buffer.Main_Ptr++;
+						x->Buffer.Main_Ptr++;
+						Ptr_Dect(x);
 					}
 				}
+				/********** 非阻塞模式 接收名称 **********/
 
-				/* 结束条件
-				 * 当前指令为命令指令
-				 * 获取到数据包的结束帧
-				 * */
+				/*********** 结束 名称接收 ***********/
 				if(*x->Buffer.Main_Ptr == BUFFER_END_SIGN && x->Command_Type == CMD_TYPE)
 				{
 					x->Status = STATE_IDLE; 	/* 进入数据处理模式 */
 					/* 推进指针 */
 					*x->Buffer.Main_Ptr = 0;
 					x->Buffer.Main_Ptr++;
+					Ptr_Dect(x);
 
 					/*---------- Performance ----------*/
 					/* 性能检测时间戳  */
@@ -272,6 +292,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 					/* 推进指针 */
 					*x->Buffer.Main_Ptr = 0;
 					x->Buffer.Main_Ptr++;
+					Ptr_Dect(x);
 
 					/*---------- Performance ----------*/
 #if PERFORMACE == 1
@@ -280,6 +301,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 					/*---------- Performance ----------*/
 
 				}
+				/*********** 结束 名称接收 ***********/
 			break;
 			case STATE_DATA:
 				if(*x->Buffer.Main_Ptr == BUFFER_END_SIGN)
@@ -288,6 +310,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 					/* 推进指针 */
 					*x->Buffer.Main_Ptr = 0;	/* 清空当前数据*/
 					x->Buffer.Main_Ptr++;
+					Ptr_Dect(x);
 
 					/*---------- Performance ----------*/
 #if PERFORMACE == 1
@@ -311,6 +334,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 							x->Val_Data_Ptr++;
 							*x->Buffer.Main_Ptr = 0;
 							x->Buffer.Main_Ptr++;
+							Ptr_Dect(x);
 							if(*x->Buffer.Main_Ptr == BUFFER_END_SIGN)
 							{
 								x->Status = STATE_IDLE; 	/* 进入数据处理模式 */
@@ -329,6 +353,7 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 						x->Val_Data_Ptr++;
 						*x->Buffer.Main_Ptr = 0;
 						x->Buffer.Main_Ptr++;
+						Ptr_Dect(x);
 					}
 				}
 				break;
@@ -388,51 +413,50 @@ void Protocol(Protocol_t* x,uint8_t Mode)
 		break;
 		
 		case FAST_TYPE:
-			if(*x->Buffer.Main_Ptr == '@' && x->Status == 0)
+			switch(x->Status)
 			{
-				Data_Arry_Index = 0;
-				Data_Index = 0;
-				x->Status = 1;
-				//缓冲区 清空
-				*x->Buffer.Main_Ptr = 0;
-				//指针后移
-				x->Buffer.Main_Ptr++;
-			}
-			if(x->Status == 1 && *x->Buffer.Main_Ptr != ',')
-			{
-				Data_Arry[Data_Arry_Index][Data_Index] = *x->Buffer.Main_Ptr;
-				Data_Index++;
-			}
-			if(x->Status == 1 && *x->Buffer.Main_Ptr == ',')
-			{
-				x->Status = 2;
-				//缓冲区清空
-				*x->Buffer.Main_Ptr = 0;
-				//指针后移
-				x->Buffer.Main_Ptr++;
-				//数据存储缓冲区后移
-				Data_Index = 0;
-				Data_Arry_Index++;
-				//还有数据
-				if(*x->Buffer.Main_Ptr != '\r')
-				{
-					x->Status = 1;
-				}
-			}
-			if(x->Status == 2 && *x->Buffer.Main_Ptr == '\r')
-			{
-				x->Status = 0;
-				*x->Buffer.Main_Ptr = 0;
+				/* 检测头部状态 */
+				case STATE_HEAD:
+					/* 检测到头部 */
+					if(*x->Buffer.Main_Ptr == '@')
+					{
+						x->Status = STATE_DATA;
+						*x->Buffer.Main_Ptr = 0;		/* 清空 Buffer */
+						x->Buffer.Main_Ptr++;			/* 指针后移 */
+						return;
+					}
+				break;
+				/* 数据接收模式 */
+				case STATE_DATA:
 
-				Data_Arry_Index = 0;
-				Data_Index = 0;
-
+					if(*x->Buffer.Main_Ptr != ',' && *x->Buffer.Main_Ptr != '\r')
+					{
+						x->Data_Buffer.Data_Arry[x->Data_Buffer.Data_Arry_Index][x->Data_Buffer.Data_Index] = *x->Buffer.Main_Ptr;
+						x->Data_Buffer.Data_Index++;
+						*x->Buffer.Main_Ptr = 0;
+						x->Buffer.Main_Ptr++;			/* 指针后移 */
+					}
+					/* 接收到数据分割符 */
+					if(*x->Buffer.Main_Ptr == ',')
+					{
+						*x->Buffer.Main_Ptr = 0;		/* 清空 Buffer */
+						x->Buffer.Main_Ptr++;			/* 指针后移 */
+						//数据缓冲区位置更新
+						x->Data_Buffer.Data_Index = 0;
+						x->Data_Buffer.Data_Arry_Index++;
+						//还有数据
+					}
+					if(*x->Buffer.Main_Ptr == '\r')
+					{
+						x->Status = STATE_HEAD;
+						*x->Buffer.Main_Ptr = 0;
+						x->Data_Buffer.Data_Arry_Index = 0;
+						x->Data_Buffer.Data_Index = 0;
+						x->Buffer.Main_Ptr++;			/* 指针后移 */
+					}
+					break;
 			}
-			//缓冲区清空
-			*x->Buffer.Main_Ptr = 0;
-			//指针后移
-			x->Buffer.Main_Ptr++;
-			break;
+
 	}
 		
 }
@@ -483,4 +507,21 @@ void CMD_Create(char *Name,void (*CallBack_Function)())
 	CMD_Arry[CMD_Num].func = CallBack_Function;
 	CMD_Num++;
 }
+
+/* 辅助函数 - 用于返回当前写指针的位置 */
+uint32_t Get_Write_Ptr(Protocol_t *x)
+{
+	return x->Buffer.Stroage_Ptr - x->Buffer.Protocol_Buffer;
+}
+
+uint32_t Get_Read_Ptr(Protocol_t *x)
+{
+	return x->Buffer.Main_Ptr - x->Buffer.Protocol_Buffer;
+}
+
+uint32_t Get_Read_Remain(Protocol_t *x)
+{
+	return x->Buffer.Protocol_Buffer + BufferSize - x->Buffer.Main_Ptr;
+}
+
 

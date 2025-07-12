@@ -1,6 +1,10 @@
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:79:6:Rec_Proc	32	static
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:107:6:Protocol_Reset	16	static
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:127:6:Protocol	64	static
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:449:6:Protocol_Init	16	static
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:464:6:Val_Create	16	static
-../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:480:6:CMD_Create	16	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:71:6:Rec_Proc	32	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:112:6:Protocol_Reset	16	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:123:6:Ptr_Dect	16	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:143:6:Protocol	64	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:473:6:Protocol_Init	16	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:488:6:Val_Create	16	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:504:6:CMD_Create	16	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:512:10:Get_Write_Ptr	16	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:517:10:Get_Read_Ptr	16	static
+../Code/Third-Party_lib/Debug_Protocol/Debug_Protocol.c:522:10:Get_Read_Remain	16	static

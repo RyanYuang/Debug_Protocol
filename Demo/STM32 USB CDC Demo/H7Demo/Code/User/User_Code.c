@@ -29,7 +29,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         rx_flag = 1; // 设置接收标志
         HAL_UART_Receive_IT(&huart1, (uint8_t *)rx_data, sizeof(rx_data)); // 重新启动接收中断
         Rec_Proc(&USART1_Protocol,rx_data);
-
     }
 }
 
@@ -37,6 +36,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void User_Main(void)
 {
+	Protocol_Init(&USART1_Protocol,SLOW_TYPE);
 	HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
     HAL_UART_Receive_IT(&huart1, rx_data, 1);
 
@@ -45,7 +45,7 @@ void User_Main(void)
     Val_Create("Para_B",&Parament_B);
     printf("System Online!\r\n");
     /*  */
-    USART1_Protocol.Block = BLOCK;
+    USART1_Protocol.Block = UNBLOCK;
 
 	/*---------- Performance ----------*/
 #if PERFORMACE == 1
@@ -54,7 +54,10 @@ void User_Main(void)
     while (1)
     {
     	Protocol(&USART1_Protocol,SLOW_TYPE);
-    	printf("%d,%f\n",Parament_A,Parament_B);
+//    	Parament_A = strtol((char*)USART1_Protocol.Data_Buffer.Data_Arry[0],NULL,10);
+//    	Parament_B = strtof((char*)USART1_Protocol.Data_Buffer.Data_Arry[1],NULL);
+    	//printf("%s,%s,%ld\n",USART1_Protocol.Data_Buffer.Data_Arry[0],USART1_Protocol.Data_Buffer.Data_Arry[1],Get_Write_Ptr(&USART1_Protocol));
+    	printf("%d,%f,%d,%ld,%ld,%c,%ld\r\n",Parament_A,Parament_B,USART1_Protocol.Status,Get_Write_Ptr(&USART1_Protocol),Get_Read_Ptr(&USART1_Protocol),*USART1_Protocol.Buffer.Main_Ptr,Get_Read_Remain(&USART1_Protocol));
 
     	/*---------- Performance ----------*/
 #if PERFORMACE == 1
