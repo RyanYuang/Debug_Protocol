@@ -1,58 +1,57 @@
 /*********************************************************************************************************************
-* Debug-Protocol 即（调试协议）是一个基于C语言开发的串口调试协议工具包
-*
-* 本开源工具的发布是希望它能发挥作用，但并未对其作任何的保证
-* 甚至没有隐含的适销性或适合特定用途的保证
-* 欢迎各位使用并传播本程序 但修改内容时必须保留作者的版权声明（即本声明）
-*
-* 文件名称          Debug_Protocol.c
-* 作者名字          Ryan Yuang
-* 版本信息          V0
-* 开发环境          Keil V5 IDE
-* 适用平台          任何支持串口通信的嵌入式平台
-* 仓库链接			https://github.com/RyanYuang/Debug-Protocol
-*
-* 修改记录
-* 日期              作者                备注
-* 2025-4-26       Ryan Yuang            first version
-********************************************************************************************************************/
+ * Debug-Protocol is a serial debugging protocol toolkit developed in C language
+ *
+ * The release of this open-source tool is intended to be useful, but no guarantees are made,
+ * including no implied warranties of merchantability or fitness for a particular purpose.
+ * Users are welcome to use and distribute this program, but any modifications must retain the author's copyright notice (i.e., this statement).
+ *
+ * File Name:         Debug_Protocol.c
+ * Author:            Ryan Yuang
+ * Version:           V0
+ * Development Env:   Keil V5 IDE
+ * Supported Platform: Any embedded platform supporting serial communication
+ * Repository Link:   https://github.com/RyanYuang/Debug-Protocol
+ *
+ * Change Log:
+ * Date            Author         Notes
+ * 2025-04-26      Ryan Yuang     Initial version
+ ********************************************************************************************************************/
 #include "Debug_Protocol.h"
 
-/* 全局变量 */
+/* Global Variables */
 
-/* 变量临时存储 */
+/* Temporary storage for variables */
 Val_t Val[50];
 
-/* 已创建的可变变量的总数 */
+/* Total number of created variables */
 int Val_Num;
 
-/* 指令数组 */
+/* Command array */
 CMD_t CMD_Arry[50];
 
-/* 已创建的指令数量  */
+/* Total number of created commands */
 int CMD_Num;
 
-/* 浮点数临时存储数组 */
+/* Temporary storage array for floating-point numbers */
 float fData_Arry[10];
 
-/* 协议结构体定义 */
-Protocol_t USART1_Protocol,USART3_Protocol;
+/* Protocol structure definitions */
+Protocol_t USART1_Protocol, USART3_Protocol;
 
 /* Buffer Size */
 int Buffer_Size = 0;
-// 定义协议状态枚举
+
+/* Protocol state enumeration */
 typedef enum {
-    STATE_HEAD = 0,           // 头部检测
-    STATE_TYPE,           // 类型检测
-    STATE_MACHINE,        // 机器地址检测
-    STATE_NAME,           // 名称接收
-    STATE_DATA,            // 数据接收
-	STATE_IDLE       // 空闲状态
+    STATE_HEAD = 0,    // Header detection
+    STATE_TYPE,        // Type detection
+    STATE_MACHINE,     // Machine address detection
+    STATE_NAME,        // Name reception
+    STATE_DATA,        // Data reception
+    STATE_IDLE         // Idle state
 } ProtocolState;
 
-
-
-/* 性能参数 */
+/* Performance parameters */
 uint32_t Start_Tick = 0;
 uint32_t Head_Tick = 0;
 uint32_t Name_Tick = 0;
@@ -61,467 +60,532 @@ uint32_t Total_Tick = 0;
 uint8_t Tick_Rec_Finish_Flag = 0;
 
 //-------------------------------------------------------------------------------------------------------------------
-// 函数简介     数据接收处理
-// 参数说明     *x                  协议对象（结构体）指针
-// 参数说明     Data                填入的数据
-// 返回参数     void
-// 使用示例     Rec_Proc(USART1_Protocol, Rec_Data);
-// 备注信息     本函数需要在串口接收中断中调用
+// Function:      Data reception processing
+// Parameters:    *x      Pointer to the protocol object (structure)
+//                Data    Input data
+// Return:        void
+// Example:       Rec_Proc(&USART1_Protocol, Rec_Data);
+// Notes:         This function must be called within the serial receive interrupt
 //-------------------------------------------------------------------------------------------------------------------
 void Rec_Proc(Protocol_t* x, uint8_t* Data)
 {
-	uwTick  = 0;
-    // 获取字符串长度
+    uint32_t uwTick = 0;
+    // Get the length of the input string
     size_t data_len = strlen((char*)Data);
 
-    // 计算缓冲区剩余空间
+    // Calculate remaining buffer space
     size_t buffer_size = sizeof(x->Buffer.Protocol_Buffer);
     size_t available_space = buffer_size - (x->Buffer.Stroage_Ptr - x->Buffer.Protocol_Buffer);
 
     size_t Cut_size = 0;
 
-    // 确保不会溢出缓冲区
+    // Ensure no buffer overflow
     if (data_len > available_space)
     {
         Cut_size = data_len - available_space;
-        data_len = available_space; // 截断到可用空间大小
+        data_len = available_space; // Truncate to available space
     }
 
-    // 快速复制字符串到缓冲区
+    // Quickly copy string to buffer
     memcpy(x->Buffer.Stroage_Ptr, Data, data_len);
 
-    // 更新存储指针
+    // Update storage pointer
     x->Buffer.Stroage_Ptr += data_len;
 
-    // 边界检查，防止指针越界
+    // Boundary check to prevent pointer out-of-bounds
     if (x->Buffer.Stroage_Ptr > x->Buffer.Protocol_Buffer + buffer_size - 1 ||
         x->Buffer.Stroage_Ptr < x->Buffer.Protocol_Buffer)
     {
-        x->Buffer.Stroage_Ptr = x->Buffer.Protocol_Buffer; // 重置指针
+        x->Buffer.Stroage_Ptr = x->Buffer.Protocol_Buffer; // Reset pointer
     }
 
-    /* 被剪切的尾部还需要放入缓冲区中 */
-    Data+=data_len;
-    if(Cut_size)
+    /* Handle truncated data by appending it to the buffer */
+    Data += data_len;
+    if (Cut_size)
     {
-    	memcpy(x->Buffer.Stroage_Ptr, Data, Cut_size);
-    	x->Buffer.Stroage_Ptr += Cut_size;
+        memcpy(x->Buffer.Stroage_Ptr, Data, Cut_size);
+        x->Buffer.Stroage_Ptr += Cut_size;
     }
 }
 
+//-------------------------------------------------------------------------------------------------------------------
+// Function:      Reset protocol state
+// Parameters:    *x      Pointer to the protocol object (structure)
+// Return:        void
+// Notes:         Resets the protocol state and pointers to initial values
+//-------------------------------------------------------------------------------------------------------------------
 void Protocol_Reset(Protocol_t* x)
 {
-	x->Status = STATE_HEAD; 							/* 进入类型处理模式 */
-	x->Val_Name_Ptr = x->Val_Name;						/* 重置变量名获取指针 */
-	x->Val_Data_Ptr = x->Val_Data;						/* 重置变量获取指针 */
-	x->Command_Type = 0;									/* 重置数据类型参数 */
-	x->Machine_Addr = 0;								/* 重置机器地址参数 */
-	//*x->Buffer.Main_Ptr = 0;							/* 接收的内容设置为空 */
-	//x->Buffer.Main_Ptr++;
+    x->Status = STATE_HEAD;                             // Enter header processing mode
+    x->Val_Name_Ptr = x->Val_Name;                      // Reset variable name pointer
+    x->Val_Data_Ptr = x->Val_Data;                      // Reset variable data pointer
+    x->Command_Type = 0;                                // Reset command type parameter
+    x->Machine_Addr = 0;                                // Reset machine address parameter
+    //*x->Buffer.Main_Ptr = 0;                          // Clear received content
+    //x->Buffer.Main_Ptr++;
 }
 
+//-------------------------------------------------------------------------------------------------------------------
+// Function:      Protocol buffer main pointer boundary check and reset
+// Parameters:    *x      Pointer to the protocol object (structure), containing buffer-related members (e.g., main pointer, buffer start address)
+// Return:        void
+// Notes:         Checks if the main pointer (Main_Ptr) exceeds the valid buffer range; resets the pointer and outputs debug info if an anomaly occurs
+//-------------------------------------------------------------------------------------------------------------------
 void Ptr_Dect(Protocol_t* x)
 {
-	/* 检测当前指针位置是否异常 */
-	if(
-			x->Buffer.Main_Ptr > (x->Buffer.Protocol_Buffer + BufferSize - 1)  	/* 检测越界 */
-			|| x->Buffer.Main_Ptr < x->Buffer.Protocol_Buffer)										/* 检测错误地址 */
-	{
-		x->Buffer.Main_Ptr = x->Buffer.Protocol_Buffer;												/* 重置指针位置为协议缓冲区的头部 */
-		printf("\n=========== Over Range Reset ==========\n");
-	}
+    /* Check if the current pointer position is out of bounds */
+    if (x->Buffer.Main_Ptr > (x->Buffer.Protocol_Buffer + BufferSize - 1) ||  // Check if pointer exceeds buffer end
+        x->Buffer.Main_Ptr < x->Buffer.Protocol_Buffer)                       // Check if pointer is before buffer start
+    {
+        x->Buffer.Main_Ptr = x->Buffer.Protocol_Buffer;                       // Reset pointer to buffer start
+#if DEBUG_MODE == 1
+        printf("\n=========== Over Range Reset ==========\n");                // Output debug info for pointer reset
+#endif
+    }
+}
+//-------------------------------------------------------------------------------------------------------------------
+// Function:      Protocol processing core
+// Parameters:    *x      Pointer to the protocol object (structure), containing buffer, state, and data pointers
+//                Mode    Data processing mode (SLOW_TYPE for slow mode, FAST_TYPE for fast mode)
+// Return:        void
+// Example:       Protocol(&USART1_Protocol, SLOW_TYPE);
+// Notes:         This function is the core of the protocol processing, handling incoming serial data in either slow or fast mode.
+//                It processes data based on the current state of the protocol (header, type, machine address, name, data, or idle).
+//                The function must be called in a continuous while loop in the main program, not in an interrupt, to avoid blocking.
+//                Slow mode processes structured data (commands or variables) with detailed parsing, while fast mode handles simpler,
+//                comma-separated data streams. The function ensures buffer safety by calling Ptr_Dect to prevent pointer overflows.
+//-------------------------------------------------------------------------------------------------------------------
+void Protocol(Protocol_t* x, uint8_t Mode)
+{
+    // Check and reset the main buffer pointer if it exceeds the valid range to prevent buffer overflows
+    Ptr_Dect(x);
+
+    // Exit early if the current buffer content is null (0x00) to avoid unnecessary processing
+    //if(*x->Buffer.Main_Ptr == 0) return; // Commented out to allow continuous processing
+
+    // Process based on the specified mode (SLOW_TYPE or FAST_TYPE)
+    switch (Mode)
+    {
+        // Slow mode: Detailed parsing for structured data (commands or variables)
+        case SLOW_TYPE:
+            // Handle different protocol states using a state machine
+            switch (x->Status)
+            {
+                // Header reception mode: Detects the start of a protocol frame
+                case STATE_HEAD:
+                    // Check for the protocol header character '@'
+                    if (*x->Buffer.Main_Ptr == '@')
+                    {
+#if PERFORMACE == 1
+                        // Record the start time for performance measurement (microseconds)
+                        Start_Tick = DWT_GetMicrosecond();
+#endif
+                        // Transition to type processing mode
+                        x->Status = STATE_TYPE;
+                        // Reset pointers and parameters for new frame processing
+                        x->Val_Name_Ptr = x->Val_Name;    // Reset variable/command name pointer
+                        x->Val_Data_Ptr = x->Val_Data;    // Reset data pointer
+                        x->Command_Type = 0;              // Clear command type
+                        x->Machine_Addr = 0;              // Clear machine address
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                        Ptr_Dect(x);                      // Ensure pointer stays within bounds
+                        x->Data_Type = INT;               // Default data type to integer
+
+#if DEBUG_MODE == 1
+                        // Debug output: Indicate header detection
+                        printf("Get Head\r\n");
+#endif
+
+                        // Store the command type from the next byte
+                        x->Command_Type = *x->Buffer.Main_Ptr;
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                        Ptr_Dect(x);                      // Ensure pointer stays within bounds
+                        x->Status = STATE_MACHINE;        // Transition to machine address processing
+
+#if DEBUG_MODE == 1
+                        // Debug output: Indicate command type
+                        if (x->Command_Type == CMD_TYPE)
+                        {
+                            printf("IS CMD\r\n");         // Command type detected
+                        }
+                        if (x->Command_Type == VAR_TYPE)
+                        {
+                            printf("IS VAR\r\n");         // Variable type detected
+                        }
+#endif
+
+                        // Store the machine address from the next byte
+                        x->Machine_Addr = *x->Buffer.Main_Ptr;
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                        Ptr_Dect(x);                      // Ensure pointer stays within bounds
+                        x->Status = STATE_NAME;           // Transition to name reception mode
+
+#if PERFORMACE == 1
+                        // Record time after header processing for performance measurement
+                        Head_Tick = DWT_GetMicrosecond();
+#endif
+
+                        // Verify if the machine address matches the current device
+                        if (x->Machine_Addr == MACHINE_ADDR)
+                        {
+#if DEBUG_MODE == 1
+                            // Debug output: Acknowledge valid machine address
+                            printf("ACK\r\n");
+#endif
+                        }
+                        else
+                        {
+#if DEBUG_MODE == 1
+                            // Debug output: Indicate mismatch in machine address
+                            printf("NO ACK For %d\r\n", x->Machine_Addr);
+#endif
+                            // Reset protocol if the address does not match
+                            Protocol_Reset(x);
+                        }
+                    }
+                    break;
+
+                // Name reception mode: Collects variable or command name
+                case STATE_NAME:
+                    // Blocking mode: Process name until a colon is encountered
+                    if (x->Block == BLOCK)
+                    {
+                        // Continue reading until a colon ':' is found
+                        while (*x->Buffer.Main_Ptr != ':')
+                        {
+                            // Copy character to name buffer
+                            *(x->Val_Name_Ptr) = *(x->Buffer.Main_Ptr);
+                            x->Val_Name_Ptr++;            // Advance name pointer
+                            *x->Buffer.Main_Ptr = 0;      // Clear current buffer content
+                            x->Buffer.Main_Ptr++;         // Advance to next buffer position
+                            Ptr_Dect(x);                  // Ensure pointer stays within bounds
+
+                            // Exit loop if colon is detected
+                            if (*x->Buffer.Main_Ptr == ':')
+                            {
+                                x->Status = STATE_IDLE;   // Transition to idle mode
+                                break;
+                            }
+                        }
+                    }
+                    // Non-blocking mode: Process one character at a time
+                    else
+                    {
+                        // Check if the current character is not a colon
+                        if (*x->Buffer.Main_Ptr != ':')
+                        {
+                            // Copy character to name buffer
+                            *(x->Val_Name_Ptr) = *(x->Buffer.Main_Ptr);
+                            x->Val_Name_Ptr++;            // Advance name pointer
+                            *x->Buffer.Main_Ptr = 0;      // Clear current buffer content
+                            x->Buffer.Main_Ptr++;         // Advance to next buffer position
+                            Ptr_Dect(x);                  // Ensure pointer stays within bounds
+                        }
+                    }
+
+                    // End name reception: Check for command termination
+                    if (*x->Buffer.Main_Ptr == BUFFER_END_SIGN && x->Command_Type == CMD_TYPE)
+                    {
+                        x->Status = STATE_IDLE;           // Transition to idle mode
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                        Ptr_Dect(x);                      // Ensure pointer stays within bounds
+
+#if PERFORMACE == 1
+                        // Record time after name reception for performance measurement
+                        Name_Tick = DWT_GetMicrosecond();
+#endif
+                    }
+
+                    // End condition for variable data: Colon detected
+                    if (*x->Buffer.Main_Ptr == ':' && x->Command_Type == VAR_TYPE)
+                    {
+                        x->Status = STATE_DATA;           // Transition to data reception mode
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                        Ptr_Dect(x);                      // Ensure pointer stays within bounds
+
+#if PERFORMACE == 1
+                        // Record time after name reception for performance measurement
+                        Name_Tick = DWT_GetMicrosecond();
+#endif
+                    }
+                    break;
+
+                // Data reception mode: Collects variable data
+                case STATE_DATA:
+                    // Check for end of data (buffer end sign)
+                    if (*x->Buffer.Main_Ptr == BUFFER_END_SIGN)
+                    {
+                        x->Status = STATE_IDLE;           // Transition to idle mode
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                        Ptr_Dect(x);                      // Ensure pointer stays within bounds
+
+#if PERFORMACE == 1
+                        // Record time after data reception for performance measurement
+                        Data_Tick = DWT_GetMicrosecond();
+#endif
+                    }
+                    else
+                    {
+                        // Blocking mode: Process data until end sign is encountered
+                        if (x->Block == BLOCK)
+                        {
+                            while (*x->Buffer.Main_Ptr != BUFFER_END_SIGN)
+                            {
+                                // Detect decimal point to set data type to float
+                                if (*(x->Buffer.Main_Ptr) == '.')
+                                {
+                                    x->Data_Type = FLOAT;
+                                }
+                                // Copy character to data buffer
+                                *(x->Val_Data_Ptr) = *(x->Buffer.Main_Ptr);
+                                x->Val_Data_Ptr++;            // Advance data pointer
+                                *x->Buffer.Main_Ptr = 0;      // Clear current buffer content
+                                x->Buffer.Main_Ptr++;         // Advance to next buffer position
+                                Ptr_Dect(x);                  // Ensure pointer stays within bounds
+
+                                // Exit loop if end sign is detected
+                                if (*x->Buffer.Main_Ptr == BUFFER_END_SIGN)
+                                {
+                                    x->Status = STATE_IDLE;   // Transition to idle mode
+#if PERFORMACE == 1
+                                    // Record time after data reception
+                                    Data_Tick = DWT_GetMicrosecond();
+#endif
+                                    break;
+                                }
+                            }
+                        }
+                        // Non-blocking mode: Process one character at a time
+                        else
+                        {
+                            // Copy character to data buffer
+                            *(x->Val_Data_Ptr) = *(x->Buffer.Main_Ptr);
+                            x->Val_Data_Ptr++;            // Advance data pointer
+                            *x->Buffer.Main_Ptr = 0;      // Clear current buffer content
+                            x->Buffer.Main_Ptr++;         // Advance to next buffer position
+                            Ptr_Dect(x);                  // Ensure pointer stays within bounds
+                        }
+                    }
+                    break;
+
+                // Idle mode: Process completed frame (variable or command)
+                case STATE_IDLE:
+                    // Handle variable data
+                    if (x->Command_Type == VAR_TYPE)
+                    {
+                        // Reset protocol state for the next frame
+                        Protocol_Reset(x);
+
+                        // Get lengths of name and data strings
+                        int Val_Name_Len = strlen((char*)x->Val_Name);
+                        int Val_Data_Len = strlen((char*)x->Val_Data);
+
+                        // Match variable name and update its value
+                        for (int i = 0; i < Val_Num; i++)
+                        {
+                            if (!strcmp((char*)x->Val_Name, (char*)Val[i].Name))
+                            {
+                                // Convert and store data based on type
+                                if (x->Data_Type == FLOAT)
+                                    *Val[i].Data.f_Data = strtof((char*)x->Val_Data, NULL);
+                                else
+                                    *Val[i].Data.I_Data = strtol((char*)x->Val_Data, NULL, 10);
+                            }
+                        }
+
+                        // Clear name and data buffers
+                        for (int i = 0; i < Val_Name_Len; i++)
+                            x->Val_Name[i] = 0;
+                        for (int i = 0; i < Val_Data_Len; i++)
+                            x->Val_Data[i] = 0;
+
+#if PERFORMACE == 1
+                        // Record total processing time and set completion flag
+                        Total_Tick = DWT_GetMicrosecond();
+                        Tick_Rec_Finish_Flag = 1;
+#endif
+                        return; // Exit after processing
+                    }
+
+                    // Handle command execution
+                    if (x->Command_Type == CMD_TYPE)
+                    {
+                        // Reset protocol state for the next frame
+                        Protocol_Reset(x);
+
+                        // Get length of command name
+                        int Val_Name_Len = strlen((char*)x->Val_Name);
+
+                        // Match command name and execute callback
+                        for (int i = 0; i < CMD_Num; i++)
+                        {
+                            if (!strcmp((char*)x->Val_Name, (char*)CMD_Arry[i].Name))
+                            {
+                                // Clear name buffer
+                                for (int j = 0; j < Val_Name_Len; j++)
+                                    x->Val_Name[j] = 0;
+                                // Execute the associated callback function
+                                CMD_Arry[i].func();
+                            }
+                        }
+
+                        // Clear name buffer (redundant, as it’s already cleared above)
+                        for (int i = 0; i < Val_Name_Len; i++)
+                            x->Val_Name[i] = 0;
+
+                        return; // Exit after processing
+                    }
+
+#if PERFORMACE == 1
+                    // Record total processing time if no specific action taken
+                    Total_Tick = DWT_GetMicrosecond();
+#endif
+                    Tick_Rec_Finish_Flag = 1; // Set completion flag
+                    break;
+            }
+            break;
+
+        // Fast mode: Simplified parsing for comma-separated data streams
+        case FAST_TYPE:
+            switch (x->Status)
+            {
+                // Header detection state
+                case STATE_HEAD:
+                    // Check for protocol header '@'
+                    if (*x->Buffer.Main_Ptr == '@')
+                    {
+                        x->Status = STATE_DATA;           // Transition to data reception mode
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                        return;                           // Exit to process next byte
+                    }
+                    break;
+
+                // Data reception mode: Collect comma-separated data
+                case STATE_DATA:
+                    // Process non-delimiter characters (not ',' or '\r')
+                    if (*x->Buffer.Main_Ptr != ',' && *x->Buffer.Main_Ptr != '\r')
+                    {
+                        // Store character in data buffer
+                        x->Data_Buffer.Data_Arry[x->Data_Buffer.Data_Arry_Index][x->Data_Buffer.Data_Index] = *x->Buffer.Main_Ptr;
+                        x->Data_Buffer.Data_Index++;      // Increment index for current data field
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                    }
+
+                    // Handle data field separator (comma)
+                    if (*x->Buffer.Main_Ptr == ',')
+                    {
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                        x->Data_Buffer.Data_Index = 0;    // Reset index for next data field
+                        x->Data_Buffer.Data_Arry_Index++; // Move to next data array slot
+                    }
+
+                    // Handle end of frame (carriage return)
+                    if (*x->Buffer.Main_Ptr == '\r')
+                    {
+                        x->Status = STATE_HEAD;           // Transition back to header detection
+                        *x->Buffer.Main_Ptr = 0;          // Clear current buffer content
+                        x->Data_Buffer.Data_Arry_Index = 0; // Reset data array index
+                        x->Data_Buffer.Data_Index = 0;    // Reset data field index
+                        x->Buffer.Main_Ptr++;             // Advance to next buffer position
+                    }
+                    break;
+            }
+            break;
+    }
 }
 
 //-------------------------------------------------------------------------------------------------------------------
-// 函数简介     协议处理正文
-// 参数说明     *x                  协议对象（结构体）指针
-// 参数说明     Mode                数据处理模式（Slow Type【慢速模式】，Fast Type【快速模式】)
-// 返回参数     void
-// 使用示例     Protocol(USART1_Protocol, SLOW_TYPE);
-// 备注信息     本函数需要While循环中调用，不要在中断中调用！
+// Function:      Protocol object initialization
+// Parameters:    *x      Pointer to the protocol object (structure)
+//                Mode    Data processing mode (SLOW_TYPE: Slow mode, FAST_TYPE: Fast mode)
+// Return:        void
+// Example:       Protocol_Init(&USART1_Protocol, SLOW_TYPE);
+// Notes:         This function must be called during initialization to set up the protocol object
 //-------------------------------------------------------------------------------------------------------------------
-void Protocol(Protocol_t* x,uint8_t Mode)
+void Protocol_Init(Protocol_t* x, uint8_t Mode)
 {
-	Ptr_Dect(x);
-	//if(*x->Buffer.Main_Ptr == 0)return;																/* 遇到0x00直接退出，防止损耗CPU性能 */
-	switch (Mode)
-	{
-		/* 慢模式的参数调节 */
-		case SLOW_TYPE:
-			switch (x->Status)
-			{
-			/* 头部接收模式 */
-			case STATE_HEAD:
-				if(*x->Buffer.Main_Ptr == '@')
-				{
-#if PERFORMACE == 1
-					Start_Tick = DWT_GetMicrosecond();		/* 获取SysTick寄存器的值 */
-#endif
-					x->Status = STATE_TYPE; 		/* 进入类型处理模式 */
-					x->Val_Name_Ptr = x->Val_Name;	/* 重置变量名获取指针 */
-					x->Val_Data_Ptr = x->Val_Data;	/* 重置变量获取指针 */
-					x->Command_Type = 0;				/* 重置数据类型参数 */
-					x->Machine_Addr = 0;			/* 重置机器地址参数 */
-					*x->Buffer.Main_Ptr = 0;		/* 接收的内容设置为空 */
-					x->Buffer.Main_Ptr++;			/* 推进接收缓冲区 */
-					Ptr_Dect(x);
-					x->Data_Type = INT;
-
-#if DEBUG_MODE == 1
-					/* ======== For DeBug ======== */
-					printf("Get Head\r\n");
-					/* ======== For DeBug ======== */
-#endif
-					x->Command_Type = *x->Buffer.Main_Ptr;			/* 存储数据类型 */
-					*x->Buffer.Main_Ptr = 0;					/* 清空当前数据 */
-					x->Buffer.Main_Ptr++;						/* 推进数据指针 */
-					Ptr_Dect(x);
-					x->Status = STATE_MACHINE;					/* 更新标志位  */
-
-#if DEBUG_MODE == 1
-					/* ======== For DeBug ======== */
-					/* ======== 判断数据类型 ======== */
-					if(x->Command_Type == CMD_TYPE)
-					{
-						/* ======== For DeBug ======== */
-						printf("IS CMD\r\n");
-						/* ======== For DeBug ======== */
-					}
-					if(x->Command_Type == VAR_TYPE)
-					{
-						/* ======== For DeBug ======== */
-						printf("IS VAR\r\n");
-						/* ======== For DeBug ======== */
-					}
-					/* ======== For DeBug ======== */
-#endif
-
-					/* 接收机器地址 */
-					x->Machine_Addr = *x->Buffer.Main_Ptr;	/* 存储机器地址 */
-					*x->Buffer.Main_Ptr = 0;				/* 清空当前数据 */
-					x->Buffer.Main_Ptr++;					/* 推进数据指针 */
-					Ptr_Dect(x);
-					x->Status = STATE_NAME;					/* 更新标志位  */
-#if PERFORMACE == 1
-					Head_Tick = DWT_GetMicrosecond();				/* 记录完成获取头部的时候的SysTick */
-#endif
-
-					/* 判断是否控制当前设备 */
-					if(x->Machine_Addr == MACHINE_ADDR)
-					{
-#if DEBUG_MODE == 1
-						printf("ACK\r\n");
-#endif
-					}
-					else
-					{
-#if DEBUG_MODE == 1
-						/* 重置整个协议 */
-						printf("NO ACK For %d\r\n",x->Machine_Addr);
-#endif
-						/* 非控制当前设备 */
-						Protocol_Reset(x);
-					}
-				}
-			break;
-			case STATE_NAME:
-				/*  接收变量名/指令名	*/
-				/********** 阻塞模式 接收名称 **********/
-				if(x->Block == BLOCK)
-				{
-
-					/* 阻塞处理变量名 */
-					while(*x->Buffer.Main_Ptr != ':')
-					{
-						*(x->Val_Name_Ptr) = *(x->Buffer.Main_Ptr);
-						x->Val_Name_Ptr++;
-						/* 推进指针 */
-						*x->Buffer.Main_Ptr = 0;
-						x->Buffer.Main_Ptr++;
-						Ptr_Dect(x);
-						/* 检测到冒号直接退出该模式 */
-						if(*x->Buffer.Main_Ptr == ':')
-						{
-							x->Status = STATE_IDLE; 	/* 进入数据处理模式 */
-							break;
-						}
-					}
-				}
-				/********** 阻塞模式 接收名称 **********/
-
-				/********** 非阻塞模式 接收名称 **********/
-				else
-				{
-					/* 非阻塞处理变量名 */
-					if(*x->Buffer.Main_Ptr != ':')
-					{
-						*(x->Val_Name_Ptr) = *(x->Buffer.Main_Ptr);
-						x->Val_Name_Ptr++;
-						/* 推进指针 */
-						*x->Buffer.Main_Ptr = 0;
-						x->Buffer.Main_Ptr++;
-						Ptr_Dect(x);
-					}
-				}
-				/********** 非阻塞模式 接收名称 **********/
-
-				/*********** 结束 名称接收 ***********/
-				if(*x->Buffer.Main_Ptr == BUFFER_END_SIGN && x->Command_Type == CMD_TYPE)
-				{
-					x->Status = STATE_IDLE; 	/* 进入数据处理模式 */
-					/* 推进指针 */
-					*x->Buffer.Main_Ptr = 0;
-					x->Buffer.Main_Ptr++;
-					Ptr_Dect(x);
-
-					/*---------- Performance ----------*/
-					/* 性能检测时间戳  */
-#if PERFORMACE == 1
-					Name_Tick = DWT_GetMicrosecond();
-#endif
-					/*---------- Performance ----------*/
-
-				}
-				/* 结束条件
-				 * 当前指令为 数据包
-				 * 检测到冒号
-				 * */
-				if(*x->Buffer.Main_Ptr == ':' && x->Command_Type == VAR_TYPE)//接收到名字帧尾，退出名字接收模式
-				{
-					x->Status = STATE_DATA;		/* 进入数据接收模式 */
-					/* 推进指针 */
-					*x->Buffer.Main_Ptr = 0;
-					x->Buffer.Main_Ptr++;
-					Ptr_Dect(x);
-
-					/*---------- Performance ----------*/
-#if PERFORMACE == 1
-					Name_Tick = DWT_GetMicrosecond();
-#endif
-					/*---------- Performance ----------*/
-
-				}
-				/*********** 结束 名称接收 ***********/
-			break;
-			case STATE_DATA:
-				if(*x->Buffer.Main_Ptr == BUFFER_END_SIGN)
-				{
-					x->Status = STATE_IDLE; 	/* 进入数据处理模式 */
-					/* 推进指针 */
-					*x->Buffer.Main_Ptr = 0;	/* 清空当前数据*/
-					x->Buffer.Main_Ptr++;
-					Ptr_Dect(x);
-
-					/*---------- Performance ----------*/
-#if PERFORMACE == 1
-					Data_Tick = DWT_GetMicrosecond();	/* 记录完成数据接收后的时间 */
-#endif
-					/*---------- Performance ----------*/
-
-				}
-				else
-				{
-					/* ---------- 处理数据 ---------- */
-					if(x->Block == BLOCK)
-					{
-						while(*x->Buffer.Main_Ptr != BUFFER_END_SIGN)
-						{
-							if(*(x->Buffer.Main_Ptr) == '.')
-							{
-								x->Data_Type = FLOAT;
-							}
-							*(x->Val_Data_Ptr) = *(x->Buffer.Main_Ptr);
-							x->Val_Data_Ptr++;
-							*x->Buffer.Main_Ptr = 0;
-							x->Buffer.Main_Ptr++;
-							Ptr_Dect(x);
-							if(*x->Buffer.Main_Ptr == BUFFER_END_SIGN)
-							{
-								x->Status = STATE_IDLE; 	/* 进入数据处理模式 */
-								/*---------- Performance ----------*/
-#if PERFORMACE == 1
-								Data_Tick = DWT_GetMicrosecond();	/* 记录完成数据接收后的时间 */
-#endif
-								/*---------- Performance ----------*/
-								break;
-							}
-						}
-					}
-					else
-					{
-						*(x->Val_Data_Ptr) = *(x->Buffer.Main_Ptr);
-						x->Val_Data_Ptr++;
-						*x->Buffer.Main_Ptr = 0;
-						x->Buffer.Main_Ptr++;
-						Ptr_Dect(x);
-					}
-				}
-				break;
-			case STATE_IDLE:
-				//接收到结束码并且数据为参数
-				if(x->Command_Type == VAR_TYPE)
-				{
-					Protocol_Reset(x);
-					int Val_Name_Len = strlen((char*)x->Val_Name);
-					int Val_Data_Len = strlen((char*)x->Val_Data);
-					for(int i = 0; i < Val_Num;i++)
-					{
-							if(!strcmp((char*)x->Val_Name,(char*)Val[i].Name))
-							{
-									if(x->Data_Type == FLOAT)*Val[i].Data.f_Data = strtof((char*)x->Val_Data,NULL);
-									else *Val[i].Data.I_Data = strtol((char*)x->Val_Data,NULL,10);
-							 }
-					}
-							for(int i = 0 ; i < Val_Name_Len;i++)x->Val_Name[i] = 0;
-							for(int i = 0 ; i < Val_Data_Len;i++)x->Val_Data[i] = 0;
-							/*---------- Performance ----------*/
-#if PERFORMACE == 1
-							Total_Tick = DWT_GetMicrosecond();			/* 记录完成整个过程之后的Tick */
-							Tick_Rec_Finish_Flag = 1;
-#endif
-							/*---------- Performance ----------*/
-
-					return;
-				}
-				//接收到结束码并且数据为指令
-				if(x->Command_Type == CMD_TYPE)
-				{
-						Protocol_Reset(x);
-						int Val_Name_Len = strlen((char*)x->Val_Name);
-						for(int i = 0; i < CMD_Num;i++)
-						{
-								if(!strcmp((char*)x->Val_Name,(char*)CMD_Arry[i].Name))
-								{
-										for(int i = 0 ; i < Val_Name_Len;i++)x->Val_Name[i] = 0;
-										CMD_Arry[i].func();
-								}
-						}
-						for(int i = 0 ; i < Val_Name_Len;i++)x->Val_Name[i] = 0;
-						return;
-				}
-				/*---------- Performance ----------*/
-#if PERFORMACE == 1
-				Total_Tick = DWT_GetMicrosecond();			/* 记录完成整个过程之后的Tick */
-#endif
-				/*---------- Performance ----------*/
-				Tick_Rec_Finish_Flag = 1;
-
-			break;
-			}
-
-
-		break;
-		
-		case FAST_TYPE:
-			switch(x->Status)
-			{
-				/* 检测头部状态 */
-				case STATE_HEAD:
-					/* 检测到头部 */
-					if(*x->Buffer.Main_Ptr == '@')
-					{
-						x->Status = STATE_DATA;
-						*x->Buffer.Main_Ptr = 0;		/* 清空 Buffer */
-						x->Buffer.Main_Ptr++;			/* 指针后移 */
-						return;
-					}
-				break;
-				/* 数据接收模式 */
-				case STATE_DATA:
-
-					if(*x->Buffer.Main_Ptr != ',' && *x->Buffer.Main_Ptr != '\r')
-					{
-						x->Data_Buffer.Data_Arry[x->Data_Buffer.Data_Arry_Index][x->Data_Buffer.Data_Index] = *x->Buffer.Main_Ptr;
-						x->Data_Buffer.Data_Index++;
-						*x->Buffer.Main_Ptr = 0;
-						x->Buffer.Main_Ptr++;			/* 指针后移 */
-					}
-					/* 接收到数据分割符 */
-					if(*x->Buffer.Main_Ptr == ',')
-					{
-						*x->Buffer.Main_Ptr = 0;		/* 清空 Buffer */
-						x->Buffer.Main_Ptr++;			/* 指针后移 */
-						//数据缓冲区位置更新
-						x->Data_Buffer.Data_Index = 0;
-						x->Data_Buffer.Data_Arry_Index++;
-						//还有数据
-					}
-					if(*x->Buffer.Main_Ptr == '\r')
-					{
-						x->Status = STATE_HEAD;
-						*x->Buffer.Main_Ptr = 0;
-						x->Data_Buffer.Data_Arry_Index = 0;
-						x->Data_Buffer.Data_Index = 0;
-						x->Buffer.Main_Ptr++;			/* 指针后移 */
-					}
-					break;
-			}
-
-	}
-		
-}
-
-
-//-------------------------------------------------------------------------------------------------------------------
-// 函数简介     协议对象初始化
-// 参数说明     *x                  协议对象（结构体）指针
-// 参数说明     Mode                数据处理模式（Slow Type【慢速模式】，Fast Type【快速模式】)
-// 返回参数     void
-// 使用示例     Protocol_Init(USART1_Protocol, SLOW_TYPE);
-// 备注信息     本函数需要初始化的过程中调用来对对象进行初始化
-//-------------------------------------------------------------------------------------------------------------------
-void Protocol_Init(Protocol_t* x,uint8_t Mode)
-{
-    x->Buffer.Protocol_Buffer[99] = BUFFER_END_SIGN;//End Sign
+    x->Buffer.Protocol_Buffer[99] = BUFFER_END_SIGN;     // Set end sign
     x->Buffer.Main_Ptr = x->Buffer.Protocol_Buffer;
     x->Buffer.Stroage_Ptr = x->Buffer.Protocol_Buffer;
 }
 
 //-------------------------------------------------------------------------------------------------------------------
-// 函数简介     可变变量的创建
-// 参数说明     *Name                  变量名
-// 参数说明     *Var                   变量本体的指针
-// 返回参数     void
-// 使用示例     Val_Create(“Speed”, &Speed);
-// 备注信息     本函数需要初始化的过程中调用来
+// Function:      Create a variable
+// Parameters:    *Name   Variable name
+//                *Var    Pointer to the variable
+// Return:        void
+// Example:       Val_Create("Speed", &Speed);
+// Notes:         This function must be called during initialization to create a variable
 //-------------------------------------------------------------------------------------------------------------------
-void Val_Create(char* Name,void*Var)
+void Val_Create(char* Name, void* Var)
 {
-    strcpy((char*)Val[Val_Num].Name,(char*)Name);
+    strcpy((char*)Val[Val_Num].Name, (char*)Name);
     Val[Val_Num].Data.Data_Addr = Var;
     Val_Num++;
 }
 
-
 //-------------------------------------------------------------------------------------------------------------------
-// 函数简介     链接指令
-// 参数说明     *Name                  变量名
-// 参数说明     *CallBack_Function     回调函数指针
-// 返回参数     void
-// 使用示例     CMD_Create(“Reply”, &OK);
-// 备注信息     本函数需要初始化的过程中调用来
+// Function:      Register a command
+// Parameters:    *Name            Command name
+//                *CallBack_Function  Pointer to the callback function
+// Return:        void
+// Example:       CMD_Create("Reply", &OK);
+// Notes:         This function must be called during initialization to register a command
 //-------------------------------------------------------------------------------------------------------------------
-void CMD_Create(char *Name,void (*CallBack_Function)())
+void CMD_Create(char *Name, void (*CallBack_Function)())
 {
-	strcpy((char*)CMD_Arry[CMD_Num].Name,(char*)Name);
-	CMD_Arry[CMD_Num].func = CallBack_Function;
-	CMD_Num++;
+    strcpy((char*)CMD_Arry[CMD_Num].Name, (char*)Name);
+    CMD_Arry[CMD_Num].func = CallBack_Function;
+    CMD_Num++;
 }
 
-/* 辅助函数 - 用于返回当前写指针的位置 */
+//-------------------------------------------------------------------------------------------------------------------
+// Function:      Get the offset of the current write pointer in the protocol buffer
+// Parameters:    *x      Pointer to the protocol object (structure), containing buffer members (e.g., storage pointer, buffer start address)
+// Return:        uint32_t  Offset of the write pointer relative to the buffer start address (in bytes)
+// Example:       uint32_t write_offset = Get_Write_Ptr(&USART1_Protocol);  // Get the current write offset for the USART1 protocol object
+// Notes:         This helper function calculates the position of the write pointer (Stroage_Ptr) relative to the start of the protocol buffer.
+//                It is used to monitor the current writing position in the buffer, aiding in debugging, buffer management, or flow control.
+//                The returned offset indicates how many bytes the write pointer has advanced from the buffer's starting address, which is 
+//                useful for tracking the amount of data stored in the buffer during protocol operations.
+//-------------------------------------------------------------------------------------------------------------------
 uint32_t Get_Write_Ptr(Protocol_t *x)
 {
-	return x->Buffer.Stroage_Ptr - x->Buffer.Protocol_Buffer;
+    return x->Buffer.Stroage_Ptr - x->Buffer.Protocol_Buffer;
 }
 
+//-------------------------------------------------------------------------------------------------------------------
+// Function:      Get the offset of the current read pointer in the protocol buffer
+// Parameters:    *x      Pointer to the protocol object (structure), containing buffer members (e.g., main pointer, buffer start address)
+// Return:        uint32_t  Offset of the read pointer relative to the buffer start address (in bytes)
+// Example:       uint32_t read_offset = Get_Read_Ptr(&USART1_Protocol);  // Get the current read offset for the USART1 protocol object
+// Notes:         This helper function calculates the position of the read pointer (Main_Ptr) relative to the start of the protocol buffer.
+//                It is used to monitor the current reading position in the buffer, which is useful for debugging, buffer management, 
+//                or tracking the progress of data processing in the protocol. The returned offset indicates how many bytes the read 
+//                pointer has advanced from the buffer's starting address.
+//-------------------------------------------------------------------------------------------------------------------
 uint32_t Get_Read_Ptr(Protocol_t *x)
 {
-	return x->Buffer.Main_Ptr - x->Buffer.Protocol_Buffer;
+    return x->Buffer.Main_Ptr - x->Buffer.Protocol_Buffer;
 }
 
-uint32_t Get_Read_Remain(Protocol_t *x)
+//-------------------------------------------------------------------------------------------------------------------
+// Function:      Get the offset of the current write pointer in the protocol buffer
+// Parameters:    *x      Pointer to the protocol object (structure), containing buffer members (e.g., storage pointer, buffer start address)
+// Return:        uint32_t  Offset of the write pointer relative to the buffer start address (in bytes)
+// Example:       uint32_t write_offset = Get_Write_Ptr(&USART1_Protocol);  // Get the current write offset for the USART1 protocol object
+// Notes:         Used to monitor the buffer write position, aiding in debugging or flow control
+//-------------------------------------------------------------------------------------------------------------------
+uint32_t Get_Write_Ptr(Protocol_t *x)
 {
-	return x->Buffer.Protocol_Buffer + BufferSize - x->Buffer.Main_Ptr;
+    return x->Buffer.Stroage_Ptr - x->Buffer.Protocol_Buffer;
 }
-
-
