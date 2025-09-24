@@ -577,15 +577,3 @@ uint32_t Get_Read_Ptr(Protocol_t *x)
 {
     return x->Buffer.Main_Ptr - x->Buffer.Protocol_Buffer;
 }
-
-//-------------------------------------------------------------------------------------------------------------------
-// Function:      Get the offset of the current write pointer in the protocol buffer
-// Parameters:    *x      Pointer to the protocol object (structure), containing buffer members (e.g., storage pointer, buffer start address)
-// Return:        uint32_t  Offset of the write pointer relative to the buffer start address (in bytes)
-// Example:       uint32_t write_offset = Get_Write_Ptr(&USART1_Protocol);  // Get the current write offset for the USART1 protocol object
-// Notes:         Used to monitor the buffer write position, aiding in debugging or flow control
-//-------------------------------------------------------------------------------------------------------------------
-uint32_t Get_Write_Ptr(Protocol_t *x)
-{
-    return x->Buffer.Stroage_Ptr - x->Buffer.Protocol_Buffer;
-}
